@@ -1,0 +1,338 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Hand-Tied Bouquet</title>
+<style>
+/* Layout: the bouquet alone, centered and sized to the window. Nothing else on the page. */
+:root {
+  --ground: #e8eee9;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #0e1814;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #0e1814;
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--ground);
+  padding-inline: 16px;
+  padding-block: 20px;
+}
+#stage {
+  display: block;
+  width: 100%;
+  max-width: 640px;
+  height: 100%;
+  margin-inline: auto;
+}
+.bloom { animation: bloom 0.9s cubic-bezier(0.2, 0.8, 0.3, 1.15) both; }
+@keyframes bloom { from { transform: scale(0.6); } to { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) {
+  .bloom { animation: none !important; }
+}
+</style>
+
+<svg id="stage" viewBox="40 24 520 740" role="img" aria-label="A hand-tied bouquet of roses, ranunculus and anemones with eucalyptus, wrapped in kraft paper and tied with a ribbon">
+  <defs>
+    <clipPath id="coneClip"><path d="M140,462 C200,470 250,520 300,528 C350,520 400,470 460,462 C446,560 366,690 314,741 Q300,754 286,741 C234,690 154,560 140,462Z"/></clipPath>
+  </defs>
+  <g id="art"></g>
+</svg>
+
+<script>
+(function () {
+  'use strict';
+  const NS = 'http://www.w3.org/2000/svg';
+  const art = document.getElementById('art');
+
+  const hsl = (h, s, l) => 'hsl(' + h + ',' + s + '%,' + l + '%)';
+  function rngFrom(seed) {
+    let a = seed >>> 0;
+    return function () {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function make(tag, attrs, parent) {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+
+  const W = { rose: [350, 70, 83], ranun: [17, 88, 79], anem: [42, 55, 96], eye: [285, 30, 20], filler: [345, 45, 95], tissue: [345, 60, 92], ribbon: [338, 52, 40] };
+
+  // Binding point: every stem crosses here, hidden under the paper.
+  const B = [300, 548];
+  // Flower head slots as [x, y, radius].
+  const FOCAL = [[300, 196, 52], [235, 272, 58], [365, 272, 58], [300, 356, 56]];
+  const SEC = [[236, 128, 40], [364, 130, 40], [166, 208, 42], [434, 208, 42], [122, 300, 42], [478, 300, 42],
+               [156, 388, 40], [444, 388, 40], [226, 438, 34], [374, 438, 34], [220, 374, 32], [380, 374, 32]];
+  const ANEM_COUNT = 5;
+  const EUC = [[74, 336], [96, 222], [150, 122], [232, 72], [300, 56], [368, 72], [450, 122], [504, 222], [526, 336],
+               [88, 424], [512, 424], [300, 120]];
+  const WAX = [[190, 84], [410, 84], [64, 262], [536, 262], [104, 446], [496, 446]];
+
+  // ---------- flower drawing ----------
+  function petalPath(L, Wd) {
+    return 'M0,0 C' + (-Wd) + ',' + (-L * 0.28) + ' ' + (-Wd * 1.08) + ',' + (-L * 0.98) + ' 0,' + (-L) +
+           ' C' + (Wd * 1.08) + ',' + (-L * 0.98) + ' ' + Wd + ',' + (-L * 0.28) + ' 0,0Z';
+  }
+
+  function drawRose(g, r, c, rng) {
+    const h = c[0], s = c[1], l = c[2];
+    make('circle', { r: r * 0.96, fill: hsl(h, s, l - 16) }, g);
+    const rings = [[9, 1.0, 0.66, 4], [7, 0.82, 0.62, 0], [6, 0.64, 0.6, -5], [4, 0.46, 0.58, -9], [3, 0.28, 0.56, -13]];
+    let rot = rng() * 360;
+    rings.forEach(function (ring) {
+      const n = ring[0], L = r * ring[1], Wd = L * ring[2], dl = ring[3];
+      rot += rng() * 40 + 180 / n;
+      for (let i = 0; i < n; i++) {
+        const a = rot + i * 360 / n + (rng() - 0.5) * 10;
+        make('path', { d: petalPath(L, Wd), transform: 'rotate(' + a.toFixed(1) + ')', fill: hsl(h, s, l + dl),
+          stroke: hsl(h, s, l - 20), 'stroke-width': 0.9, 'stroke-linejoin': 'round' }, g);
+      }
+    });
+    const sw = r * 0.12;
+    make('path', { d: 'M' + (-sw) + ',0 A' + sw + ',' + sw + ' 0 0 1 ' + (sw * 0.2) + ',' + (-sw) +
+      ' A' + (sw * 0.6) + ',' + (sw * 0.6) + ' 0 0 1 ' + (sw * 0.5) + ',' + (sw * 0.1),
+      fill: 'none', stroke: hsl(h, s, l - 26), 'stroke-width': 1.2, 'stroke-linecap': 'round' }, g);
+  }
+
+  function drawRanun(g, r, c, rng) {
+    const h = c[0], s = c[1], l = c[2];
+    make('circle', { r: r * 0.97, fill: hsl(h, s, l - 18) }, g);
+    const rings = [[12, 1, 0.5, 5], [10, 0.86, 0.5, 2], [9, 0.72, 0.5, 0], [8, 0.58, 0.5, -4], [6, 0.44, 0.5, -8], [5, 0.3, 0.5, -12]];
+    let rot = rng() * 360;
+    rings.forEach(function (ring) {
+      const n = ring[0], L = r * ring[1], Wd = L * ring[2], dl = ring[3];
+      rot += rng() * 30 + 180 / n;
+      for (let i = 0; i < n; i++) {
+        const a = rot + i * 360 / n + (rng() - 0.5) * 12;
+        make('path', { d: petalPath(L, Wd), transform: 'rotate(' + a.toFixed(1) + ')', fill: hsl(h, s, l + dl),
+          stroke: hsl(h, s, l - 22), 'stroke-width': 0.7, 'stroke-linejoin': 'round' }, g);
+      }
+    });
+    make('circle', { r: r * 0.07, fill: hsl(96, 28, 42), opacity: 0.85 }, g);
+  }
+
+  function drawAnem(g, r, c, eye, rng) {
+    const h = c[0], s = c[1], l = c[2];
+    const rot = rng() * 360;
+    for (let i = 0; i < 7; i++) {
+      make('path', { d: petalPath(r, r * 0.4), transform: 'rotate(' + (rot + i * 360 / 7).toFixed(1) + ')', fill: hsl(h, s, l),
+        stroke: hsl(h, s, l - 24), 'stroke-width': 0.9, 'stroke-linejoin': 'round' }, g);
+    }
+    for (let i = 0; i < 7; i++) {
+      make('path', { d: petalPath(r * 0.66, r * 0.3), transform: 'rotate(' + (rot + (i + 0.5) * 360 / 7).toFixed(1) + ')', fill: hsl(h, s, l - 7),
+        stroke: hsl(h, s, l - 26), 'stroke-width': 0.7, 'stroke-linejoin': 'round' }, g);
+    }
+    const eh = eye[0], es = eye[1], eL = eye[2];
+    make('circle', { r: r * 0.2, fill: hsl(eh, es, eL) }, g);
+    for (let i = 0; i < 22; i++) {
+      const a = i * Math.PI * 2 / 22 + rng() * 0.1;
+      const r1 = r * 0.19, r2 = r * (0.30 + rng() * 0.06);
+      make('line', { x1: Math.cos(a) * r1, y1: Math.sin(a) * r1, x2: Math.cos(a) * r2, y2: Math.sin(a) * r2,
+        stroke: hsl(eh, es, eL + 10), 'stroke-width': 0.9, 'stroke-linecap': 'round' }, g);
+      make('circle', { cx: Math.cos(a) * r2, cy: Math.sin(a) * r2, r: r * 0.022 + 0.4, fill: hsl(eh, es, eL + 16) }, g);
+    }
+    make('circle', { cx: -r * 0.05, cy: -r * 0.06, r: r * 0.05, fill: hsl(eh, es, eL + 28), opacity: 0.8 }, g);
+  }
+
+  // ---------- foliage and filler ----------
+  function quadPoint(t, x0, y0, cx, cy, x1, y1) {
+    const u = 1 - t;
+    return [u * u * x0 + 2 * u * t * cx + t * t * x1, u * u * y0 + 2 * u * t * cy + t * t * y1];
+  }
+  function quadTan(t, x0, y0, cx, cy, x1, y1) {
+    return Math.atan2(2 * (1 - t) * (cy - y0) + 2 * t * (y1 - cy), 2 * (1 - t) * (cx - x0) + 2 * t * (x1 - cx)) * 180 / Math.PI;
+  }
+
+  function leaf(g, x, y, ang, size, rng) {
+    const L = 54 + rng() * 8, S = 14 + rng() * 8, h = 146 + rng() * 14;
+    const e = make('g', { transform: 'translate(' + x.toFixed(1) + ' ' + y.toFixed(1) + ') rotate(' + ang.toFixed(1) + ')' }, g);
+    make('ellipse', { cx: size, cy: 0, rx: size, ry: size * 0.9, fill: hsl(h, S, L), stroke: hsl(h, S + 4, L - 20), 'stroke-width': 0.8 }, e);
+    make('line', { x1: 0, y1: 0, x2: size * 1.75, y2: 0, stroke: hsl(h, S + 4, L - 18), 'stroke-width': 0.6, opacity: 0.5 }, e);
+  }
+
+  function eucSprig(parent, x1, y1, rng) {
+    const x0 = B[0] + (rng() - 0.5) * 10, y0 = B[1];
+    const bow = (x1 < 300 ? -1 : 1) * (8 + rng() * 22);
+    const cx = (x0 + x1) / 2 + bow, cy = (y0 + y1) / 2;
+    const g = make('g', {}, parent);
+    make('path', { d: 'M' + x0 + ',' + y0 + ' Q' + cx + ',' + cy + ' ' + x1 + ',' + y1, fill: 'none',
+      stroke: hsl(138, 24, 36), 'stroke-width': 2.4, 'stroke-linecap': 'round' }, g);
+    const n = 11;
+    for (let i = 0; i < n; i++) {
+      const t = 0.3 + 0.68 * i / (n - 1);
+      const p = quadPoint(t, x0, y0, cx, cy, x1, y1);
+      const a = quadTan(t, x0, y0, cx, cy, x1, y1);
+      const size = 15 - 5 * (i / (n - 1)) + rng() * 2;
+      leaf(g, p[0], p[1], a - 62 - rng() * 8, size, rng);
+      leaf(g, p[0], p[1], a + 62 + rng() * 8, size, rng);
+    }
+    leaf(g, x1, y1, quadTan(1, x0, y0, cx, cy, x1, y1), 10, rng);
+  }
+
+  function tinyFlower(g, x, y, c, rng) {
+    const h = c[0], s = c[1], l = c[2];
+    const rr = 3.6 + rng() * 1.2;
+    const f = make('g', { transform: 'translate(' + x.toFixed(1) + ' ' + y.toFixed(1) + ') rotate(' + (rng() * 72).toFixed(0) + ')' }, g);
+    for (let i = 0; i < 5; i++) {
+      const a = i * 72 * Math.PI / 180;
+      make('circle', { cx: Math.cos(a) * rr * 0.9, cy: Math.sin(a) * rr * 0.9, r: rr * 0.72, fill: hsl(h, s, l),
+        stroke: hsl(h, s, l - 22), 'stroke-width': 0.5 }, f);
+    }
+    make('circle', { r: rr * 0.34, fill: hsl(38, 70, 52) }, f);
+  }
+
+  function waxSprig(parent, x1, y1, c, rng) {
+    const x0 = B[0] + (rng() - 0.5) * 10, y0 = B[1];
+    const bow = (x1 < 300 ? -1 : 1) * (6 + rng() * 18);
+    const cx = (x0 + x1) / 2 + bow, cy = (y0 + y1) / 2;
+    const g = make('g', {}, parent);
+    make('path', { d: 'M' + x0 + ',' + y0 + ' Q' + cx + ',' + cy + ' ' + x1 + ',' + y1, fill: 'none',
+      stroke: hsl(125, 22, 38), 'stroke-width': 1.8, 'stroke-linecap': 'round' }, g);
+    const n = 9;
+    for (let i = 0; i < n; i++) {
+      const t = 0.45 + 0.55 * i / (n - 1);
+      const p = quadPoint(t, x0, y0, cx, cy, x1, y1);
+      const base = quadTan(t, x0, y0, cx, cy, x1, y1) * Math.PI / 180;
+      const side = i % 2 ? 1 : -1;
+      const len = 10 + rng() * 10;
+      const ang = base + side * (0.7 + rng() * 0.5);
+      const ex = p[0] + Math.cos(ang) * len, ey = p[1] + Math.sin(ang) * len;
+      make('line', { x1: p[0], y1: p[1], x2: ex, y2: ey, stroke: hsl(125, 22, 38), 'stroke-width': 1.1, 'stroke-linecap': 'round' }, g);
+      tinyFlower(g, ex, ey, c, rng);
+    }
+    tinyFlower(g, x1, y1, c, rng);
+  }
+
+  // ---------- wrap: tissue, kraft paper, ribbon ----------
+  const CONE = 'M140,462 C200,470 250,520 300,528 C350,520 400,470 460,462 C446,560 366,690 314,741 Q300,754 286,741 C234,690 154,560 140,462Z';
+  const FLAP = 'M300,528 C350,520 400,470 460,462 C446,560 366,690 314,741 Q305,752 296,747 C304,680 304,600 300,528Z';
+  const bez = (t, a, b, c, d) => { const u = 1 - t; return u * u * u * a + 3 * u * u * t * b + 3 * u * t * t * c + t * t * t * d; };
+
+  function tissueD(lift, spread, phase) {
+    const pts = [];
+    for (let i = 0; i <= 20; i++) {
+      const t = i / 20;
+      let x = bez(t, 140, 200, 250, 300), y = bez(t, 462, 470, 520, 528);
+      x -= (300 - x) * spread;
+      y -= lift;
+      pts.push([x, y]);
+    }
+    const right = pts.slice(0, -1).reverse().map(function (p) { return [600 - p[0], p[1]]; });
+    const all = pts.concat(right);
+    let d = '';
+    all.forEach(function (p, i) {
+      const y = p[1] + Math.sin(i * 1.7 + phase) * 2.4;
+      d += (i ? 'L' : 'M') + p[0].toFixed(1) + ',' + y.toFixed(1);
+    });
+    d += 'L470,488 L395,598 L300,706 L205,598 L130,488Z';
+    return d;
+  }
+
+  function drawWrap(parent) {
+    const t = W.tissue, rb = W.ribbon;
+    make('path', { d: tissueD(27, 0.2, 1.3), fill: hsl(t[0], Math.max(t[1] - 25, 10), Math.min(t[2] + 4, 97)), stroke: hsl(t[0], t[1] - 10, t[2] - 14), 'stroke-width': 1, 'stroke-linejoin': 'round' }, parent);
+    make('path', { d: tissueD(15, 0.14, 0), fill: hsl(t[0], t[1], t[2]), stroke: hsl(t[0], t[1], t[2] - 16), 'stroke-width': 1, 'stroke-linejoin': 'round' }, parent);
+
+    make('path', { d: CONE, fill: hsl(33, 40, 64), stroke: hsl(30, 34, 46), 'stroke-width': 1.5, 'stroke-linejoin': 'round' }, parent);
+    make('path', { d: FLAP, fill: hsl(33, 40, 58) }, parent);
+    make('path', { d: 'M300,528 C304,600 304,680 296,747', fill: 'none', stroke: hsl(30, 36, 44), 'stroke-width': 1.5, 'stroke-linecap': 'round' }, parent);
+    ['M190,482 Q240,610 292,726', 'M240,500 Q268,610 294,716', 'M410,482 Q360,610 308,726', 'M360,498 Q332,610 306,716'].forEach(function (d) {
+      make('path', { d: d, fill: 'none', stroke: hsl(30, 30, 46), 'stroke-width': 1.1, opacity: 0.35, 'stroke-linecap': 'round' }, parent);
+    });
+    make('path', { d: 'M140,462 C200,470 250,520 300,528 C350,520 400,470 460,462', fill: 'none', stroke: hsl(36, 50, 78), 'stroke-width': 2.4, 'stroke-linecap': 'round' }, parent);
+
+    const rg = make('g', { 'clip-path': 'url(#coneClip)' }, parent);
+    make('path', { d: 'M170,580 Q300,616 430,580', fill: 'none', stroke: hsl(rb[0], rb[1], rb[2]), 'stroke-width': 16 }, rg);
+    make('path', { d: 'M170,574 Q300,610 430,574', fill: 'none', stroke: hsl(rb[0], rb[1], rb[2] + 10), 'stroke-width': 1.5, opacity: 0.55 }, rg);
+
+    const main = hsl(rb[0], rb[1], rb[2]), dark = hsl(rb[0], rb[1], rb[2] - 9), light = hsl(rb[0], rb[1], rb[2] + 9);
+    make('path', { d: 'M296,606 C282,640 262,668 236,690 L252,706 C280,688 300,654 308,614Z', fill: dark }, parent);
+    make('path', { d: 'M304,606 C318,640 338,668 364,690 L348,706 C320,688 300,654 292,614Z', fill: dark }, parent);
+    make('path', { d: 'M300,600 C262,566 214,580 220,606 C226,630 270,622 300,600Z', fill: main, stroke: dark, 'stroke-width': 1 }, parent);
+    make('path', { d: 'M300,600 C338,566 386,580 380,606 C374,630 330,622 300,600Z', fill: main, stroke: dark, 'stroke-width': 1 }, parent);
+    make('path', { d: 'M296,600 C266,578 236,588 238,604 C241,619 268,614 296,600Z', fill: dark, opacity: 0.55 }, parent);
+    make('path', { d: 'M304,600 C334,578 364,588 362,604 C359,619 332,614 304,600Z', fill: dark, opacity: 0.55 }, parent);
+    make('rect', { x: 286, y: 586, width: 28, height: 30, rx: 8, fill: light, stroke: dark, 'stroke-width': 1 }, parent);
+  }
+
+  // ---------- composition ----------
+  function shuffle(a, rng) {
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      const tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+    }
+    return a;
+  }
+  function pickAnemones(rng) {
+    let best = null, bestScore = -1;
+    for (let k = 0; k < 60; k++) {
+      const idx = shuffle(SEC.map(function (_, i) { return i; }), rng).slice(0, ANEM_COUNT);
+      let m = 1e9;
+      for (let i = 0; i < idx.length; i++) {
+        for (let j = i + 1; j < idx.length; j++) {
+          const a = SEC[idx[i]], b = SEC[idx[j]];
+          m = Math.min(m, Math.hypot(a[0] - b[0], a[1] - b[1]));
+        }
+      }
+      if (m > bestScore) { bestScore = m; best = idx; }
+    }
+    return new Set(best);
+  }
+
+  function render() {
+    const rng = rngFrom(7);
+    const back = make('g', {}, art);
+    const stemLayer = make('g', {}, art);
+    const flowers = make('g', {}, art);
+    const wrapLayer = make('g', {}, art);
+
+    EUC.forEach(function (p) { eucSprig(back, p[0], p[1], rng); });
+    WAX.forEach(function (p) { waxSprig(back, p[0], p[1], W.filler, rng); });
+
+    const anemSet = pickAnemones(rng);
+    const heads = [];
+    FOCAL.forEach(function (s) { heads.push({ type: 'rose', x: s[0], y: s[1], r: s[2] }); });
+    SEC.forEach(function (s, i) { heads.push({ type: anemSet.has(i) ? 'anem' : 'ranun', x: s[0], y: s[1], r: s[2] }); });
+    heads.forEach(function (h) {
+      h.x += (rng() - 0.5) * 8; h.y += (rng() - 0.5) * 8; h.r *= 0.95 + rng() * 0.1;
+    });
+    heads.sort(function (a, b) { return a.y - b.y; });
+
+    heads.forEach(function (h) {
+      const x0 = B[0] + (rng() - 0.5) * 10;
+      const bow = (rng() - 0.5) * 24;
+      make('path', {
+        d: 'M' + x0.toFixed(1) + ',' + B[1] + ' Q' + ((x0 + h.x) / 2 + bow).toFixed(1) + ',' + ((B[1] + h.y) / 2).toFixed(1) + ' ' + h.x.toFixed(1) + ',' + h.y.toFixed(1),
+        fill: 'none', stroke: hsl(138, 26, 34), 'stroke-width': 3.4, 'stroke-linecap': 'round' }, stemLayer);
+    });
+
+    heads.forEach(function (h, i) {
+      const slot = make('g', { transform: 'translate(' + h.x.toFixed(1) + ' ' + h.y.toFixed(1) + ')' }, flowers);
+      const g = make('g', { 'class': 'bloom' }, slot);
+      g.style.animationDelay = (i * 40) + 'ms';
+      if (h.type === 'rose') drawRose(g, h.r, W.rose, rng);
+      else if (h.type === 'ranun') drawRanun(g, h.r, W.ranun, rng);
+      else drawAnem(g, h.r, W.anem, W.eye, rng);
+    });
+
+    drawWrap(wrapLayer);
+  }
+
+  render();
+})();
+</script>
+
+</body></html>
